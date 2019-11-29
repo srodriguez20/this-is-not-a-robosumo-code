@@ -104,11 +104,6 @@ void receiveData(){
     while (radio.available()) {         // read all the data
       radio.read( data, sizeof(data) ); // read data
     }
-    if(!data[2]){
-    RGBVal++ ;
-    if(RGBVal>4){
-      RGBVal=0;}
-    }
     if(!data[3]){
       automatic = 0;
     }
@@ -122,4 +117,25 @@ void receiveData(){
       digitalWrite(dirBPin, FORWARD);
       analogWrite(pwmBPin, 0);
     }
+}
+void ctrlCar0( bool motorDirA, byte motorSpdA, bool motorDirB, byte motorSpdB) {
+  digitalWrite(dirAPin, motorDirA);
+  if(automatic == 1 && infraValue1<infraMaxValue && motorDirA == BACKWARD )
+  {
+   analogWrite(pwmAPin, 0);
+  }
+  else{
+   analogWrite(pwmAPin, motorSpdA);
+  }
+  
+  
+  digitalWrite(dirBPin, motorDirB);
+  if(automatic == 1 && infraValue1<infraMaxValue && motorDirB == BACKWARD )
+  {
+   analogWrite(pwmAPin, 0);
+  }
+  else{
+   analogWrite(pwmBPin, motorSpdB);
+  }
+  
 }

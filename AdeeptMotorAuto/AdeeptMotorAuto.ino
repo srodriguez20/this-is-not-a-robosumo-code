@@ -31,13 +31,10 @@ const int pwmBPin = 5;    // define pin for PWM used to control rotational speed
 const int snsAPin = 0;    // define pin for detecting current of motor A
 const int snsBPin = 1;    // define pin for detecting current of motor B
 
-const int infra1 = A0;
-const int RPin = A3; 
-const int GPin = A4; 
-const int BPin = A5;
+const int infra1 = A5;
 
-int RGBVal = 0;
 int automatic = 0;
+bool firstSpeed = true;
 
 int infraValue1 = 0;
 int infraValue2 = 0;
@@ -46,7 +43,6 @@ int infraMaxValue = 90;
 #define BACKWARD HIGH
 
 void setup() {
-  Serial.begin(9600);
   radio.begin();                      // initialize RF24
   radio.setRetries(0, 15);            // set retries times
   radio.setPALevel(RF24_PA_LOW);      // set power
@@ -59,9 +55,6 @@ void setup() {
   pinMode(pwmBPin, OUTPUT);   // set pwmBPin to output mode
   
   pinMode(infra1, INPUT);
-  pinMode(RPin, OUTPUT);   // set RPin to output mode
-  pinMode(GPin, OUTPUT);   // set GPin to output mode
-  pinMode(BPin, OUTPUT);   // set BPin to output mode
 
   pinMode(trigPin, OUTPUT); // set trigPin to output mode
   pinMode(echoPin, INPUT);  // set echoPin to input mode
@@ -69,14 +62,15 @@ void setup() {
 
 void loop()
 {
+    digitalWrite(trigPin, HIGH);
     receiveData();
     mode[0]=0;
     // radio.write( mode, sizeof(mode) );
     // calculate the steering angle of servo according to the direction joystick of remote control and the deviation
     infraValue1= analogRead(infra1);
-    Serial.println(infraValue1);
-    if(automatic == 1 && infraValue1<infraMaxValue )
+    if(infraValue1<infraMaxValue )
     {
+      firstSpeed= false;
       digitalWrite(dirAPin, FORWARD);
       analogWrite(pwmAPin, 200);
       digitalWrite(dirBPin, FORWARD);
@@ -86,31 +80,26 @@ void loop()
       analogWrite(pwmAPin, 255);
       digitalWrite(dirBPin, FORWARD);
       analogWrite(pwmBPin, 255);
-      delay(500);
+      delay(1000);
       digitalWrite(dirAPin, BACKWARD);
       analogWrite(pwmAPin, 0);
       digitalWrite(dirBPin, BACKWARD);
       analogWrite(pwmBPin, 0);
     }
     else{
-      digitalWrite(dirAPin, BACKWARD);
-      analogWrite(pwmAPin, 200);
-      digitalWrite(dirBPin, BACKWARD);
-      analogWrite(pwmBPin, 200);
-    }
-    
-    
-
-    
-    // control the steering and travelling of the smart car
-    ctrlCar0( motorDirA, motorSpdA, motorDirB,motorSpdB);
-    switch(RGBVal){
-      case 0: digitalWrite(RPin, HIGH);digitalWrite(GPin, HIGH);digitalWrite(BPin, HIGH);break;
-      case 1: digitalWrite(RPin, LOW);digitalWrite(GPin, LOW);digitalWrite(BPin, LOW);   break;
-      case 2: digitalWrite(RPin, LOW);digitalWrite(GPin, HIGH);digitalWrite(BPin, HIGH); break;
-      case 3: digitalWrite(RPin, HIGH);digitalWrite(GPin, LOW);digitalWrite(BPin, HIGH); break;
-      case 4: digitalWrite(RPin, HIGH);digitalWrite(GPin, HIGH);digitalWrite(BPin, LOW); break;
-      default: break;
+      if(firstSpeed){
+        digitalWrite(dirAPin, BACKWARD);
+        analogWrite(pwmAPin, 200);
+        digitalWrite(dirBPin, BACKWARD);
+        analogWrite(pwmBPin, 200);
+       }
+       else{
+        digitalWrite(dirAPin, BACKWARD);
+        analogWrite(pwmAPin, 100);
+        digitalWrite(dirBPin, BACKWARD);
+        analogWrite(pwmBPin, 100);
+       }
+      
     }
   
 }
@@ -119,11 +108,6 @@ void receiveData(){
     while (radio.available()) {         // read all the data
       radio.read( data, sizeof(data) ); // read data
     }
-    if(!data[2]){
-    RGBVal++ ;
-    if(RGBVal>4){
-      RGBVal=0;}
-    }
     if(!data[3]){
       automatic = 0;
     }
@@ -131,50 +115,4 @@ void receiveData(){
       automatic = 1;
     }
    }
-   else{
-      digitalWrite(dirAPin, FORWARD);
-      analogWrite(pwmAPin, 0);
-      digitalWrite(dirBPin, FORWARD);
-      analogWrite(pwmBPin, 0);
-    }
-}
-void ctrlCar0( bool motorDirA, byte motorSpdA, bool motorDirB, byte motorSpdB) {
-  digitalWrite(dirAPin, motorDirA);
-  if(automatic == 1 && infraValue1<infraMaxValue && motorDirA == BACKWARD )
-  {
-   analogWrite(pwmAPin, 0);
-  }
-  else{
-   analogWrite(pwmAPin, motorSpdA);
-  }
-  
-  
-  digitalWrite(dirBPin, motorDirB);
-  if(automatic == 1 && infraValue1<infraMaxValue && motorDirB == BACKWARD )
-  {
-   analogWrite(pwmAPin, 0);
-  }
-  else{
-   analogWrite(pwmBPin, motorSpdB);
-  }
-  
-}
-
-float getDistance() {
-  unsigned long pingTime; // save the high level time returned by ultrasonic ranging module
-  float distance;         // save the distance away from obstacle
-
-  // set the trigPin output 10us high level to make the ultrasonic ranging module start to measure
-  digitalWrite(trigPin, HIGH);
-  delayMicroseconds(10);
-  digitalWrite(trigPin, LOW);
-  // get the high level time returned by ultrasonic ranging module
-  pingTime = pulseIn(echoPin, HIGH, rangingTimeOut);
-
-  if (pingTime != 0) {  // if the measure is not overtime
-    distance = pingTime * soundVelocity / 2 / 10000;  // calculate the obstacle distance(cm) according to the time of high level returned
-    return distance;    // return distance(cm)
-  }
-  else                  // if the measure is overtime
-    return maxDistance; // returns the maximum distance(cm)
 }
